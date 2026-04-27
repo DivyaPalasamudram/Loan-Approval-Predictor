@@ -7,17 +7,17 @@ This is a Streamlit web application that uses a trained machine learning model t
 The model takes in features such as loan amount, property value, credit history, debt-to-income ratio, and employment information to generate a prediction.
 
 # Features
-Loan amount (LOAN)
-Mortgage due (MORTDUE)
-Property value (VALUE)
-Years on job (YOJ)
-Credit history variables (DEROG, DELINQ, CLAGE, NINQ, CLNO)
-Debt-to-income ratio (DEBTINC)
+Loan amount (LOAN),
+Mortgage due (MORTDUE),
+Property value (VALUE),
+Years on job (YOJ),
+Credit history variables (DEROG, DELINQ, CLAGE, NINQ, CLNO),
+Debt-to-income ratio (DEBTINC),
 Job type and loan reason
 
 # Technologies Used
-Streamlit
-Python
-Pandas
-Scikit-learn
+Streamlit,
+Python,
+Pandas,
+Scikit-learn,
 Pickle
