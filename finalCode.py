@@ -14,7 +14,7 @@ import sklearn
 
 # Load the trained model
 # --- Put the Model in Drive First---
-scalar =  pickle.load(open(r"/content/scaler.pkl", "rb"))
+scalar =  pickle.load(open(r"scaler.pkl", "rb"))
 model = pickle.load(open(r"/content/LoanApprovalModel.pkl", "rb"))
 
 # Set the title of the app
