@@ -3,139 +3,185 @@
 import streamlit as st
 import pickle
 import pandas as pd
-import sklearn
 
-# Load scaler and trained model
-scalar = pickle.load(open(r"scaler.pkl", "rb"))
-model = pickle.load(open(r"LoanApprovalModel.pkl", "rb"))
+# ---------------------------------
+# LOAD MODEL AND SCALER
+# ---------------------------------
 
-# Title
+with open("LoanApprovalModel.pkl", "rb") as file:
+    model = pickle.load(file)
+
+with open("scaler.pkl", "rb") as file:
+    scaler = pickle.load(file)
+
+# Exact variables used by the trained model
+model_columns = list(model.feature_names_in_)
+
+# ---------------------------------
+# TITLE
+# ---------------------------------
+
 st.markdown(
-    "<h1 style='text-align: center; background-color: #ffcccc; padding: 10px; color: #cc0000;'><b>Home Equity Loan Approval</b></h1>",
+    """
+    <h1 style="
+        text-align: center;
+        background-color: #ffcccc;
+        padding: 10px;
+        color: #cc0000;
+    ">
+    <b>Loan Approval Predictor</b>
+    </h1>
+    """,
     unsafe_allow_html=True
 )
 
 st.header("Enter Loan Applicant's Details")
 
-# Numeric inputs
-loan = st.slider(
-    "Loan Amount (LOAN)",
-    min_value=1000,
-    max_value=500000,
-    step=1000
-)
+# ---------------------------------
+# NUMERIC INPUTS
+# ---------------------------------
 
-mortdue = st.slider(
-    "Mortgage Due (MORTDUE)",
+requested_loan_amount = st.number_input(
+    "Requested Loan Amount",
     min_value=0.0,
-    max_value=1000000.0,
+    value=10000.0,
     step=1000.0
 )
 
-value = st.slider(
-    "Property Value (VALUE)",
-    min_value=0.0,
-    max_value=1000000.0,
-    step=1000.0
-)
-
-# Changed display name
-yoj = st.selectbox(
-    "Years at Current Job",
-    options=list(range(1, 41))
-)
-
-derog = st.number_input(
-    "Derogatory Reports (DEROG)",
-    min_value=0,
-    max_value=15,
+fico_score = st.slider(
+    "FICO Score",
+    min_value=300,
+    max_value=850,
+    value=650,
     step=1
 )
 
-delinq = st.selectbox(
-    "Delinquent Reports (DELINQ)",
-    options=list(range(0, 15))
-)
-
-clage = st.slider(
-    "Age of Oldest Trade Line in Months (CLAGE)",
+monthly_gross_income = st.number_input(
+    "Monthly Gross Income",
     min_value=0.0,
-    max_value=100.0,
-    step=1.0
+    value=5000.0,
+    step=500.0
 )
 
-# Changed display name
-ninq = st.slider(
-    "Recent Credit Inquiries",
+monthly_housing_payment = st.number_input(
+    "Monthly Housing Payment",
     min_value=0.0,
-    max_value=15.0,
-    step=1.0
+    value=1500.0,
+    step=100.0
 )
 
-# Changed display name
-clno = st.slider(
-    "Number of Credit Lines",
-    min_value=0.0,
-    max_value=50.0,
-    step=1.0
+bankruptcy = st.selectbox(
+    "Ever Bankrupt or Foreclosed?",
+    options=[0, 1],
+    format_func=lambda x: "Yes" if x == 1 else "No"
 )
 
-debtinc = st.slider(
-    "Debt-to-Income Ratio (DEBTINC)",
-    min_value=0.0,
-    max_value=200.0,
-    step=0.1
-)
+# ---------------------------------
+# FIND EXACT CATEGORIES FROM MODEL
+# ---------------------------------
 
-# Categorical inputs
+def get_model_categories(prefix):
+    return [
+        col
+        for col in model_columns
+        if col.startswith(prefix + "_")
+    ]
+
+reason_columns = get_model_categories("Reason")
+employment_status_columns = get_model_categories("Employment_Status")
+employment_sector_columns = get_model_categories("Employment_Sector")
+lender_columns = get_model_categories("Lender")
+
+# Because training used drop_first=True,
+# one original category is the reference category
+# and does not have its own dummy column.
+
 reason = st.selectbox(
-    "Reason for Loan (REASON)",
-    ["HomeImp", "DebtCon"]
+    "Reason for Loan",
+    ["Reference Category"] + reason_columns,
+    format_func=lambda x:
+        "Other / Reference Category"
+        if x == "Reference Category"
+        else x.replace("Reason_", "").replace("_", " ").title()
 )
 
-job = st.selectbox(
-    "Job Category (JOB)",
-    ["ProfExe", "Other", "Mgr", "Office", "Sales"]
+employment_status = st.selectbox(
+    "Employment Status",
+    ["Reference Category"] + employment_status_columns,
+    format_func=lambda x:
+        "Other / Reference Category"
+        if x == "Reference Category"
+        else x.replace("Employment_Status_", "").replace("_", " ").title()
 )
 
-# Create input DataFrame
-input_data = pd.DataFrame({
-    "LOAN": [loan],
-    "MORTDUE": [mortdue],
-    "VALUE": [value],
-    "YOJ": [yoj],
-    "DEROG": [derog],
-    "DELINQ": [delinq],
-    "CLAGE": [clage],
-    "NINQ": [ninq],
-    "CLNO": [clno],
-    "DEBTINC": [debtinc],
-    "REASON": [reason],
-    "JOB": [job]
-})
-
-# One-hot encode categorical variables
-input_data_encoded = pd.get_dummies(
-    input_data,
-    columns=["REASON", "JOB"]
+employment_sector = st.selectbox(
+    "Employment Sector",
+    ["Reference Category"] + employment_sector_columns,
+    format_func=lambda x:
+        "Other / Reference Category"
+        if x == "Reference Category"
+        else x.replace("Employment_Sector_", "").replace("_", " ").title()
 )
 
-# Add missing columns expected by model
-model_columns = model.feature_names_in_
+lender = st.selectbox(
+    "Lender",
+    ["Reference Category"] + lender_columns,
+    format_func=lambda x:
+        "Reference Lender"
+        if x == "Reference Category"
+        else x.replace("Lender_", "")
+)
 
-for col in model_columns:
-    if col not in input_data_encoded.columns:
-        input_data_encoded[col] = 0
+# ---------------------------------
+# BUILD MODEL INPUT
+# ---------------------------------
 
-# Reorder columns to match model
-input_data_encoded = input_data_encoded[model_columns]
+# Start with every model variable set to 0
+input_data = pd.DataFrame(
+    0,
+    index=[0],
+    columns=model_columns,
+    dtype=float
+)
 
-# Predict
+# Numeric variables
+input_data.loc[0, "Requested_Loan_Amount"] = requested_loan_amount
+input_data.loc[0, "FICO_score"] = fico_score
+input_data.loc[0, "Monthly_Gross_Income"] = monthly_gross_income
+input_data.loc[0, "Monthly_Housing_Payment"] = monthly_housing_payment
+input_data.loc[0, "Ever_Bankrupt_or_Foreclose"] = bankruptcy
+
+# Set selected dummy variables to 1
+if reason != "Reference Category":
+    input_data.loc[0, reason] = 1
+
+if employment_status != "Reference Category":
+    input_data.loc[0, employment_status] = 1
+
+if employment_sector != "Reference Category":
+    input_data.loc[0, employment_sector] = 1
+
+if lender != "Reference Category":
+    input_data.loc[0, lender] = 1
+
+# ---------------------------------
+# PREDICTION
+# ---------------------------------
+
 if st.button("Evaluate Loan"):
 
-    prediction = model.predict(input_data_encoded)[0]
+    # Must scale the data because the model
+    # was trained using scaled features
+    input_scaled = scaler.transform(input_data)
+
+    prediction = model.predict(input_scaled)[0]
+    probability = model.predict_proba(input_scaled)[0][1]
 
     if prediction == 1:
-        st.write("The prediction is: **Bad Loan** 🚫")
+        st.success("The prediction is: **Approved ✅**")
     else:
-        st.write("The prediction is: **Good Loan** 💲")
+        st.error("The prediction is: **Denied ❌**")
+
+    st.write(
+        f"Predicted Approval Probability: **{probability:.1%}**"
+    )
