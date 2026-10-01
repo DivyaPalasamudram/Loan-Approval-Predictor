@@ -92,9 +92,9 @@ employment_status_columns = get_model_categories("Employment_Status")
 employment_sector_columns = get_model_categories("Employment_Sector")
 lender_columns = get_model_categories("Lender")
 
-# Because training used drop_first=True,
-# one original category is the reference category
-# and does not have its own dummy column.
+# ---------------------------------
+# CATEGORICAL INPUTS
+# ---------------------------------
 
 reason = st.selectbox(
     "Reason for Loan",
@@ -105,11 +105,12 @@ reason = st.selectbox(
         else x.replace("Reason_", "").replace("_", " ").title()
 )
 
+# Full Time is the reference category
 employment_status = st.selectbox(
     "Employment Status",
     ["Reference Category"] + employment_status_columns,
     format_func=lambda x:
-        "Other / Reference Category"
+        "Full Time"
         if x == "Reference Category"
         else x.replace("Employment_Status_", "").replace("_", " ").title()
 )
@@ -136,7 +137,6 @@ lender = st.selectbox(
 # BUILD MODEL INPUT
 # ---------------------------------
 
-# Start with every model variable set to 0
 input_data = pd.DataFrame(
     0,
     index=[0],
@@ -151,7 +151,7 @@ input_data.loc[0, "Monthly_Gross_Income"] = monthly_gross_income
 input_data.loc[0, "Monthly_Housing_Payment"] = monthly_housing_payment
 input_data.loc[0, "Ever_Bankrupt_or_Foreclose"] = bankruptcy
 
-# Set selected dummy variables to 1
+# Set selected categories to 1
 if reason != "Reference Category":
     input_data.loc[0, reason] = 1
 
@@ -170,11 +170,13 @@ if lender != "Reference Category":
 
 if st.button("Evaluate Loan"):
 
-    # Must scale the data because the model
-    # was trained using scaled features
+    # Scale inputs using the scaler used during training
     input_scaled = scaler.transform(input_data)
 
+    # Make prediction
     prediction = model.predict(input_scaled)[0]
+
+    # Get probability of approval
     probability = model.predict_proba(input_scaled)[0][1]
 
     if prediction == 1:
